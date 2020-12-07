@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import math
 
 cap = cv2.VideoCapture(0)
 
@@ -9,7 +10,7 @@ def nothing():
 
 
 cv2.namedWindow('original')
-cv2.createTrackbar('h_min', 'original', 0, 180,  nothing)
+cv2.createTrackbar('h_min', 'original', 0, 180, nothing)
 cv2.createTrackbar('h_max', 'original', 0, 180, nothing)
 cv2.createTrackbar('s_min', 'original', 0, 255, nothing)
 cv2.createTrackbar('s_max', 'original', 0, 255, nothing)
@@ -23,7 +24,6 @@ cv2.setTrackbarPos('s_min', 'original', 54)
 cv2.setTrackbarPos('s_max', 'original', 255)
 cv2.setTrackbarPos('v_min', 'original', 5)
 cv2.setTrackbarPos('v_max', 'original', 253)
-
 
 while True:
     # flag, image_origin = cap.read()
@@ -39,20 +39,39 @@ while True:
     # edges = cv2.Canny(image_blue, 10, 250)
     contours, hierarchy = cv2.findContours(image_blue, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-        # cnt = max(contours, key=cv2.contourArea)
+    # cnt = max(contours, key=cv2.contourArea)
     if len(contours) != 0:
         for cnt in contours:
             rect = cv2.minAreaRect(cnt)
             box = cv2.boxPoints(rect)
             box = np.int0(box)
             area = int(rect[1][0] * rect[1][1])
+            center = int(rect[0][0]), int(rect[0][1])
             area_bar = cv2.getTrackbarPos('area', 'original')
+
+            edge_one = np.int0((box[1][0] - box[0][0], box[1][1] - box[0][1]))
+            edge_two = np.int0((box[2][0] - box[1][0], box[2][1] - box[1][1]))
+
+            used_edge = edge_one
+            if cv2.norm(edge_two) > cv2.norm(edge_one):
+                used_edge = edge_two
+            ref = (1, 0)
+            angle = math.degrees(
+                math.acos((ref[0] * used_edge[0] + ref[1] * used_edge[1]) / (cv2.norm(ref) * cv2.norm(used_edge))))
+
             if area > area_bar:
                 cv2.drawContours(image_origin, [box], 0, (255, 255, 0), 2)
+                cv2.circle(image_origin, center, 5, (0, 255, 255), 2)
+                cv2.putText(image_origin, str(angle), (center[0] + 20, center[1] - 20), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX,
+                            1, (0, 0, 255), 2)
+            center_image = image_origin.shape[1] // 2, image_origin.shape[0] // 2
+            print(center_image[0], center[0])
 
-        # if len(cnt) > 4:
-        #     ellipse = cv2.fitEllipse(cnt)
-        #     cv2.ellipse(image_origin, ellipse, (0, 0, 255), 2)
+            if center_image[0] > center[0]:
+                print('left')
+            elif center_image[0] < center[0]:
+                print('right')
+
 
     cv2.imshow('original', image_origin)
     # cv2.imshow('image blue', image_blue)
